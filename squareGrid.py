@@ -39,7 +39,7 @@ video_capture = cv2.VideoCapture('../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09
 rows = 20
 cols = 20
 ret, first_frame = video_capture.read()
-# prev_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
+prev_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
 
 """ 
 mask = np.zeros_like(first_frame)
@@ -58,7 +58,7 @@ while True:
     #convert to gray scale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     #calc dense optical flow
-    flow = cv2.calcOpticalFlowFarneback(first_frame, frame, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    flow = cv2.calcOpticalFlowFarneback(prev_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
     #compute magnitude
     magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
     #print magnitude and angle
@@ -126,7 +126,7 @@ while True:
     cv2.imshow("Frame", frame)
 
     #update previous frame
-    first_frame = frame
+    prev_gray = gray
     #Frames are read by intervals of 1 millisecond. The programs breaks out of the while loop when the user presses the "q" key
     if cv2.waitKey(5) & 0xFF == ord('q'):
         break
