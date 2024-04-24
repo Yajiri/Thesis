@@ -16,38 +16,15 @@ def draw_grid(frame, rows, cols):
         x = i * gridline_width
         cv2.line(frame, (x, 0), (x, height), (0, 255, 0), 1)
 
-# Trying to detect left right movemnt across grid cells
-def detect_movement (prev_grid, current_grid):
-
-    rows, cols = prev_grid.shape
-    movements = [] 
-
-    for i in range(rows):
-        for j in range(cols - 1):  # skip last column cause we copare from left to right
-           
-            # Check for movement from left to right
-            if prev_grid[i][j] == 1 and current_grid[i][j + 1] == 1 and j > 3 and i < 14 and j < 16:
-                movements.append(("Right to Left", (j, i), (j + 1, i)))
-            
-            # Check for movement from right to left
-            if prev_grid[i][j + 1] == 1 and current_grid[i][j] == 1 and j > 3 and i < 14 and j < 16:
-                movements.append(("Left to Right", (j + 1, i), (j, i))) 
-                
-    return movements
 #Open MP4
-video_capture = cv2.VideoCapture('../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--12-07-08/40/video.hevc')
+video_capture = cv2.VideoCapture('../comma2k/Chunk_1/b0c9d2329ad1606b|2018-07-27--06-03-57/11/video.hevc')
 rows = 20
 cols = 20
 ret, first_frame = video_capture.read()
-prev_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
-
-""" 
 mask = np.zeros_like(first_frame)
+prev_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
 mask[..., 1] = 255
-"""
-#store grids from previous frame
 
-grid_history = []
 #Loop frames
 while True:
     if not video_capture.isOpened():
@@ -65,7 +42,6 @@ while True:
     #print("Magnitude:", magnitude)
     #print("Angle:", angle)
     #set image hue
-    """
     mask[..., 0] = angle * 180 / np.pi /2
     #set image value
     mask[..., 2] = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
@@ -75,13 +51,9 @@ while True:
     result = cv2.addWeighted(frame, 1, rgb, 2, 0)
     #checking grid
     # Loop through each grid cell
-    """
 # Calculate the height and width of each grid cell
-    grid_cell_height = frame.shape[0] // rows
-    grid_cell_width = frame.shape[1] // cols
-   
-    # Initialize the grid
-    current_grid = np.zeros((rows, cols), dtype=int)
+    grid_cell_height = frame.shape[0] / rows
+    grid_cell_width = frame.shape[1] / cols
 
 
 # Loop through each grid cell
@@ -97,38 +69,15 @@ while True:
         # Calculate magnitude in the grid cell
             avg_mag = np.mean(magnitude[y_start:y_end, x_start:x_end])
         # Print if there is any movement in the grid cell
-            if avg_mag < 0: #this value needs to be updated so we only get the ones we want to be printed...
-                #print("Optical Flow Magnitudes for Grid Cell (", i, ",", j, "):", avg_mag)
-                current_grid[i][j] = 1
-  
-    #add to grid history
-    grid_history.append(current_grid)
-
-    #remove if more than 5 frames
-    if len(grid_history)> 5:
-        grid_history.pop(0)
-
-    #Detect horizontal movement across grid cells
-    if len(grid_history) == 5:
-        movements = detect_movement(grid_history[-2], grid_history[-1])
-        for movement in movements:
-            direction, start_cell, end_cell = movement
-            print(direction, "from", start_cell, "to", end_cell)
-            # draw lines for movement across cells
-            start_centroid = (int((start_cell[0] + 0.5) * grid_cell_width), int((start_cell[1] + 0.5) * grid_cell_height))
-            end_centroid = (int((end_cell[0] + 0.5) * grid_cell_width), int((end_cell[1] + 0.5) * grid_cell_height))
-
-            cv2.line(frame, start_centroid, end_centroid, (0,0,255), 2)
+            if avg_mag < 0 and j > 3 and i < 14 and j < 16: #this value needs to be updated so we only get the ones we want to be printed...
+                print("Optical Flow Magnitudes for Grid Cell (", i, ",", j, "):", avg_mag)
     #result to see the vectors, frame to remove them.
-    """  
-    cv2.imshow("input",result) 
-    """
-    cv2.imshow("Frame", frame)
+    cv2.imshow("input",result)
 
     #update previous frame
     prev_gray = gray
     #Frames are read by intervals of 1 millisecond. The programs breaks out of the while loop when the user presses the "q" key
-    if cv2.waitKey(5) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 #realese the video capture
 cv2.getBuildInformation()
