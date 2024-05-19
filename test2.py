@@ -9,6 +9,7 @@ aspect_ratio_min = 0.5
 aspect_ratio_max = 4.0
 motion_threshold_factor = 1.5
 vid_path = "../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--14-06-32/10/video.hevc"
+my_path = '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc'
 
 def detect_cut_in(prev_gray, frame, flow_history):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

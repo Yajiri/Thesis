@@ -6,6 +6,7 @@ history_weight = 0.9
 motion_threshold_factor = 1.5
 accumulated_frames = 10  # Number of frames to accumulate motion for cut-in detection
 vid_path = "../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--14-06-32/10/video.hevc"
+my_path = '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc'
 
 def detect_cut_in(prev_grays, frame, flow_histories):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

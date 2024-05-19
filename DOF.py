@@ -1,16 +1,47 @@
 import cv2
 import numpy as np
 
+def draw_grid(frame, rows, cols):
+    height, width = frame.shape[:2]
+    gridline_width = width // cols
+    gridline_height = height // rows
+
+    # Draw horizontal grid lines
+    for i in range(1, rows):
+        y = i * gridline_height
+        cv2.line(frame, (0, y), (width, y), (150, 150, 150), 1)
+
+    # Draw vertical grid lines
+    for i in range(1, cols):
+        x = i * gridline_width
+        cv2.line(frame, (x, 0), (x, height), (150, 150, 150), 1)
+
 # Parameters
 history_weight = 0.9
 min_contour_area = 1000
-max_contour_area = 20000
-aspect_ratio_min = 0.5
-aspect_ratio_max = 4.0
 motion_threshold_factor = 1.5
 vid_path = "../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--14-06-32/10/video.hevc"
+my_path = '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc'
 
-def detect_cut_in(prev_gray, frame, flow_history):
+# Initialization
+video_capture = cv2.VideoCapture(my_path)
+rows = 20
+cols = 20
+
+ret, first_frame = video_capture.read()
+if not ret:
+    print("Failed to read video")
+    exit()
+prev_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
+flow_history = None
+
+while True:
+    ret, frame = video_capture.read()
+    if not ret:
+        break
+
+    draw_grid(frame, rows, cols)
+
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     flow = cv2.calcOpticalFlowFarneback(prev_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
 
@@ -23,60 +54,36 @@ def detect_cut_in(prev_gray, frame, flow_history):
     motion_threshold = np.mean(magnitude) * motion_threshold_factor
     motion_mask = magnitude > motion_threshold
 
-    # Initialize a mask for visualization
-    vis_mask = np.zeros_like(frame)
-    vis_mask[..., 1] = 255  # Set saturation to maximum
+    grid_cell_height = frame.shape[0] // rows
+    grid_cell_width = frame.shape[1] // cols
 
-    contours, _ = cv2.findContours(motion_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for contour in contours:
-        contour_area = cv2.contourArea(contour)
-        if contour_area < min_contour_area:
+    for i in range(rows):
+        if i <= 5 or i >= 16:  # Skip rows 1-5 and 16-20
             continue
-        x, y, w, h = cv2.boundingRect(contour)
-        aspect_ratio = w / float(h)
-        if aspect_ratio_min < aspect_ratio < aspect_ratio_max:
-            # Calculate highest speed and angle within the contour
-            local_mag = magnitude[y:y+h, x:x+w]
-            local_angle = angle[y:y+h, x:x+w]
-            speed = np.max(local_mag)
-            mean_angle = np.degrees(np.mean(local_angle))
+        for j in range(cols):
+            if j <= 4 or j >= 16:  # Skip columns 1-4 and 16-20
+                continue
+            y_start = i * grid_cell_height
+            x_start = j * grid_cell_width
+            y_end = (i + 1) * grid_cell_height
+            x_end = (j + 1) * grid_cell_width
 
-            # Annotate the frame
-            aspect_ratio_text = f"Aspect Ratio: {aspect_ratio:.2f}"
-            area_text = f"Area: {contour_area:.2f} px"
-            speed_text = f"Speed: {speed:.2f} px/frame"
-            angle_text = f"Angle: {mean_angle:.0f}°"
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.putText(frame, aspect_ratio_text, (x, y - 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-            cv2.putText(frame, area_text, (x, y - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-            cv2.putText(frame, speed_text, (x, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-            cv2.putText(frame, angle_text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            avg_mag = np.mean(magnitude[y_start:y_end, x_start:x_end])
+            avg_angle = np.mean(angle[y_start:y_end, x_start:x_end])
 
-            # Update visualization mask
-            vis_mask[y:y+h, x:x+w, 0] = local_angle * 180 / np.pi / 2
-            vis_mask[y:y+h, x:x+w, 2] = cv2.normalize(local_mag, None, 0, 255, cv2.NORM_MINMAX)
+            if avg_mag > motion_threshold:
+                cv2.rectangle(frame, (x_start, y_start), (x_end, y_end), (0, 0, 255), 2)
 
-    # Convert HSV to RGB (BGR) color representation
-    rgb = cv2.cvtColor(vis_mask, cv2.COLOR_HSV2BGR)
-    combined = cv2.addWeighted(frame, 1, rgb, 0.6, 0)
+                if j in [9, 10]:  # Check columns 9 and 10
+                    for col in [7, 8, 11, 12]:  # Check for movement from columns 7, 8, 11, or 12
+                        # Check if there is movement from previous columns to columns 9 or 10
+                        if np.mean(magnitude[y_start:y_end, col * grid_cell_width:(col + 1) * grid_cell_width]) > motion_threshold:
+                            print(f"Cut-in detected from column {col} into column {j} - Mag: {avg_mag:.2f}, Angle: {avg_angle:.2f}")
 
-    cv2.imshow('Motion Detection with Flow Visualization', combined)
-    return gray, flow_history
+    cv2.imshow("Motion Detection", frame)
+    prev_gray = gray
 
-# Initialization
-video_capture = cv2.VideoCapture(vid_path)
-ret, first_frame = video_capture.read()
-prev_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
-flow_history = None
-
-while True:
-    ret, frame = video_capture.read()
-    if not ret:
-        break
-
-    prev_gray, flow_history = detect_cut_in(prev_gray, frame, flow_history)
-
-    if cv2.waitKey(1) == ord('q'):
+    if cv2.waitKey(5) & 0xFF == ord('q'):
         break
 
 video_capture.release()

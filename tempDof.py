@@ -1,12 +1,15 @@
 import cv2
 import numpy as np
 
+my_path = '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc'
+a_path = '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-07-27--06-03-57/11/video.hevc'
+
 def draw_grid(frame, rows, cols):
     height, width, = frame.shape[:2]
     #Calculate spacing
     gridline_width = width // cols
     gridline_height = height // rows
-
+    
     #draw horizontal grid
     for i in range(1, rows):
         y = i * gridline_height
@@ -17,7 +20,7 @@ def draw_grid(frame, rows, cols):
         cv2.line(frame, (x, 0), (x, height), (0, 255, 0), 1)
 
 #Open MP4
-video_capture = cv2.VideoCapture('../comma2k/Chunk_1/b0c9d2329ad1606b|2018-07-27--06-03-57/11/video.hevc')
+video_capture = cv2.VideoCapture(my_path)
 rows = 20
 cols = 20
 ret, first_frame = video_capture.read()
