@@ -24,7 +24,7 @@ def draw_star_grid(frame, stars):
             cv2.line(frame, points[i], points[(i + 2) % 5], (0, 255, 0), 1)
 
 # Open the video file
-video_capture = cv2.VideoCapture('../comma2k/Chunk_1/b0c9d2329ad1606b|2018-07-27--06-03-57/3/video.mp4')
+video_capture = cv2.VideoCapture('../comma2k/Chunk_1/b0c9d2329ad1606b|2018-07-27--06-03-57/4/video.hevc')
 
 # Define the number of stars
 num_stars = 5
