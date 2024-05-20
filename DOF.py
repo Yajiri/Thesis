@@ -1,37 +1,46 @@
 import cv2
 import numpy as np
 
-def draw_grid(frame, rows, cols):
-    height, width = frame.shape[:2]
-    gridline_width = width // cols
-    gridline_height = height // rows
+def is_motion_towards_trapezoid(contour, trapezoid, direction, flow, magnitude, angle):
+    rect = cv2.boundingRect(contour)
+    cx, cy = rect[0] + rect[2] // 2, rect[1] + rect[3] // 2  # Center of the contour
+    contour_poly = cv2.approxPolyDP(contour, 3, True)
 
-    # Draw horizontal grid lines
-    for i in range(1, rows):
-        y = i * gridline_height
-        cv2.line(frame, (0, y), (width, y), (150, 150, 150), 1)
-
-    # Draw vertical grid lines
-    for i in range(1, cols):
-        x = i * gridline_width
-        cv2.line(frame, (x, 0), (x, height), (150, 150, 150), 1)
+    if direction == 'left':
+        if cx < trapezoid[0][0]:
+            for point in contour_poly:
+                px, py = point[0]  # Convert point to tuple
+                if cv2.pointPolygonTest(np.array(trapezoid), (int(px), int(py)), False) >= 0:
+                    if np.mean(flow[int(py), int(px), 0]) > 0 and np.mean(magnitude[int(py), int(px)]) > 1.2 and 0 < np.mean(angle[int(py), int(px)]) < np.pi:
+                        return True
+    elif direction == 'right':
+        if cx > trapezoid[1][0]:
+            for point in contour_poly:
+                px, py = point[0]  # Convert point to tuple
+                if cv2.pointPolygonTest(np.array(trapezoid), (int(px), int(py)), False) >= 0:
+                    if np.mean(flow[int(py), int(px), 0]) < 0 and np.mean(magnitude[int(py), int(px)]) > 1.2 and np.pi < np.mean(angle[int(py), int(px)]) < 2 * np.pi:
+                        return True
+    return False
 
 # Parameters
 history_weight = 0.9
 min_contour_area = 1000
-motion_threshold_factor = 1.55
+max_contour_area = 20000
+aspect_ratio_min = 0.5
+aspect_ratio_max = 4.0
+motion_threshold_factor = 1.5
+blur_ksize = 5  # Kernel size for blurring
+
 paths = [
-    '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc', # Jen's path
-    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--14-06-32/10/video.hevc', #doesnt work well
-    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-23--12-52-06/45/video.hevc', # detects all cut-ins, no false positives 
-    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--15-48-37/16/video.hevc' # works well well with SOF, but dof just shits the bed cause of shadows
+    '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc',
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--14-06-32/10/video.hevc',
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-23--12-52-06/45/video.hevc',
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--15-48-37/16/video.hevc'
 ]
 
-my_path = paths[1]
+my_path = paths[2]
 # Initialization
 video_capture = cv2.VideoCapture(my_path)
-rows = 20
-cols = 20
 
 ret, first_frame = video_capture.read()
 if not ret:
@@ -40,15 +49,28 @@ if not ret:
 prev_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
 flow_history = None
 
+# Define the trapezoid's coordinates using specific points
+top_left = (585, 385)
+top_right = (615, 385)
+bottom_right = (850, 600)
+bottom_left = (350, 600)
+trapezoid = [top_left, top_right, bottom_right, bottom_left]
+
+# Background subtractor
+fgbg = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=16, detectShadows=False)
+
 while True:
     ret, frame = video_capture.read()
     if not ret:
         break
 
-    draw_grid(frame, rows, cols)
-
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    flow = cv2.calcOpticalFlowFarneback(prev_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    gray = cv2.medianBlur(gray, blur_ksize)  # Apply median blur to reduce noise
+
+    fgmask = fgbg.apply(gray)
+    bg_removed = cv2.bitwise_and(gray, gray, mask=fgmask)
+
+    flow = cv2.calcOpticalFlowFarneback(prev_gray, bg_removed, None, 0.5, 3, 15, 3, 5, 1.2, 0)
 
     if flow_history is None:
         flow_history = flow
@@ -60,32 +82,25 @@ while True:
 
     motion_mask = magnitude > motion_threshold
 
-    grid_cell_height = frame.shape[0] // rows
-    grid_cell_width = frame.shape[1] // cols
+    contours, _ = cv2.findContours(motion_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    for i in range(rows):
-        if i <= 8 or i >= 15:  # Skip rows 1-5 and 16-20
-            continue
-        for j in range(cols):
-            if j <= 5 or j >= 15:  # Skip columns 1-4 and 16-20
-                continue
-            y_start = i * grid_cell_height
-            x_start = j * grid_cell_width
-            y_end = (i + 1) * grid_cell_height
-            x_end = (j + 1) * grid_cell_width
+    for contour in contours:
+        if min_contour_area < cv2.contourArea(contour) < max_contour_area:
+            x, y, w, h = cv2.boundingRect(contour)
+            aspect_ratio = w / float(h)
+            if aspect_ratio_min < aspect_ratio < aspect_ratio_max:
+                avg_mag = np.mean(magnitude[y:y+h, x:x+w])
+                avg_angle = np.mean(angle[y:y+h, x:x+w])
 
-            avg_mag = np.mean(magnitude[y_start:y_end, x_start:x_end])
-            avg_angle = np.mean(angle[y_start:y_end, x_start:x_end])
+                if avg_mag > 1.2 and avg_angle > 3:
+                    cv2.drawContours(frame, [contour], -1, (0, 0, 255), 2)
 
-            if avg_mag > motion_threshold and avg_mag > 1.2 and avg_angle > 3:
-                cv2.rectangle(frame, (x_start, y_start), (x_end, y_end), (0, 0, 255), 2)
+                    if is_motion_towards_trapezoid(contour, trapezoid, 'left', flow, magnitude, angle):
+                        print(f"Cut-in detected from left - Mag: {avg_mag:.2f}, Angle: {avg_angle:.2f}")
+                    elif is_motion_towards_trapezoid(contour, trapezoid, 'right', flow, magnitude, angle):
+                        print(f"Cut-in detected from right - Mag: {avg_mag:.2f}, Angle: {avg_angle:.2f}")
 
-                if j in [9, 10, 11, 12]:  # Check columns 9 and 10
-                    for col in [7, 8, 13, 14]:  # Check for movement from columns 7, 8, 11, or 12
-                        # Check if there is movement from previous columns to columns 9 or 10
-                        if np.mean(magnitude[y_start:y_end, col * grid_cell_width:(col + 1) * grid_cell_width]) > motion_threshold:
-                            print(f"Cut-in detected from column {col} into column {j} - Mag: {avg_mag:.2f}, Angle: {avg_angle:.2f}")
-
+    cv2.polylines(frame, [np.array(trapezoid)], isClosed=True, color=(0, 255, 0), thickness=2)
     cv2.imshow("Motion Detection", frame)
     prev_gray = gray
 
