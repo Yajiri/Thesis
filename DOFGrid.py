@@ -1,90 +1,95 @@
 import cv2
 import numpy as np
 
-my_path = '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc'
-
-
 def draw_grid(frame, rows, cols):
-    height, width, = frame.shape[:2]
-    #Calculate spacing
+    height, width = frame.shape[:2]
     gridline_width = width // cols
     gridline_height = height // rows
 
-    #draw horizontal grid
+    # Draw horizontal grid lines
     for i in range(1, rows):
         y = i * gridline_height
-        cv2.line(frame, (0, y), (width, y), (0, 255, 0), 1)
-    #Vertical
+        cv2.line(frame, (0, y), (width, y), (150, 150, 150), 1)
+
+    # Draw vertical grid lines
     for i in range(1, cols):
         x = i * gridline_width
-        cv2.line(frame, (x, 0), (x, height), (0, 255, 0), 1)
+        cv2.line(frame, (x, 0), (x, height), (150, 150, 150), 1)
 
-#Open MP4
+# Parameters
+history_weight = 0.9
+min_contour_area = 1000
+motion_threshold_factor = 1.55
+paths = [
+    '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc', # Jen's path
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-23--12-52-06/45/video.hevc', # detects all cut-ins, no false positives 
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--15-48-37/16/video.hevc' # works well well with SOF, but dof just shits the bed cause of shadows
+]
+
+my_path = paths[1]
+# Initialization
 video_capture = cv2.VideoCapture(my_path)
 rows = 20
 cols = 20
+
 ret, first_frame = video_capture.read()
-mask = np.zeros_like(first_frame)
+if not ret:
+    print("Failed to read video")
+    exit()
 prev_gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
-mask[..., 1] = 255
+flow_history = None
 
-#Loop frames
 while True:
-    if not video_capture.isOpened():
-        print("error")
-    #Read frames
     ret, frame = video_capture.read()
-    draw_grid(frame, rows,cols)
-    #convert to gray scale
+    if not ret:
+        break
+
+    draw_grid(frame, rows, cols)
+
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    #calc dense optical flow
     flow = cv2.calcOpticalFlowFarneback(prev_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-    #compute magnitude
-    magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-    #print magnitude and angle
-    #print("Magnitude:", magnitude)
-    #print("Angle:", angle)
-    #set image hue
-    mask[..., 0] = angle * 180 / np.pi /2
-    #set image value
-    mask[..., 2] = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
-    #convert hsv to rgb
-    rgb = cv2.cvtColor(mask, cv2.COLOR_HSV2BGR)
-    #overlay the vectors on the frame
-    result = cv2.addWeighted(frame, 1, rgb, 2, 0)
-    #checking grid
-    # Loop through each grid cell
-# Calculate the height and width of each grid cell
-    grid_cell_height = frame.shape[0] / rows
-    grid_cell_width = frame.shape[1] / cols
 
+    if flow_history is None:
+        flow_history = flow
+    else:
+        flow_history = history_weight * flow_history + (1 - history_weight) * flow
 
-# Loop through each grid cell
+    magnitude, angle = cv2.cartToPolar(flow_history[..., 0], flow_history[..., 1])
+    motion_threshold = np.mean(magnitude) * motion_threshold_factor
+
+    motion_mask = magnitude > motion_threshold
+
+    grid_cell_height = frame.shape[0] // rows
+    grid_cell_width = frame.shape[1] // cols
+
     for i in range(rows):
+        if i <= 8 or i >= 15:  # Skip rows 1-5 and 16-20
+            continue
         for j in range(cols):
-        # Calculate the top-left corner of the grid cell
-            y_start = int(i * grid_cell_height)
-            x_start = int(j * grid_cell_width)
-        # Calculate the bottom-right corner of the grid cell
-            y_end = int((i + 1) * grid_cell_height) if i < rows - 1 else frame.shape[0]
-            x_end = int((j + 1) * grid_cell_width) if j < cols - 1 else frame.shape[1]
-            #print("Grid Cell Coordinates: (", y_start, ",", x_start, ") to (", y_end, ",", x_end, ")")
-        # Calculate magnitude in the grid cell
+            if j <= 5 or j >= 15:  # Skip columns 1-4 and 16-20
+                continue
+            y_start = i * grid_cell_height
+            x_start = j * grid_cell_width
+            y_end = (i + 1) * grid_cell_height
+            x_end = (j + 1) * grid_cell_width
+
             avg_mag = np.mean(magnitude[y_start:y_end, x_start:x_end])
             avg_angle = np.mean(angle[y_start:y_end, x_start:x_end])
-            
-        # Print if there is any movement in the grid cell
-            if (i == 9 or i == 10) and (j == 9 or j == 10 or j == 11): #this value needs to be updated so we only get the ones we want to be printed...
-                print(" cell: (", i, ",", j, "):", "Mag:", avg_mag , "Angle: ", avg_angle)
-    #result to see the vectors, frame to remove them.
-    cv2.imshow("input",result)
 
-    #update previous frame
+            if avg_mag > motion_threshold and avg_mag > 1.2 and avg_angle > 3:
+                cv2.rectangle(frame, (x_start, y_start), (x_end, y_end), (0, 0, 255), 2)
+
+                if j in [9, 10, 11, 12]:  # Check columns 9 and 10
+                    for col in [7, 8, 13, 14]:  # Check for movement from columns 7, 8, 11, or 12
+                        # Check if there is movement from previous columns to columns 9 or 10
+                        if np.mean(magnitude[y_start:y_end, col * grid_cell_width:(col + 1) * grid_cell_width]) > motion_threshold:
+                            print(f"Cut-in detected from column {col} into column {j} - Mag: {avg_mag:.2f}, Angle: {avg_angle:.2f}")
+
+    cv2.imshow("Motion Detection", frame)
     prev_gray = gray
-    #Frames are read by intervals of 1 millisecond. The programs breaks out of the while loop when the user presses the "q" key
+
     if cv2.waitKey(5) & 0xFF == ord('q'):
         break
-#realese the video capture
-cv2.getBuildInformation()
+
 video_capture.release()
 cv2.destroyAllWindows()

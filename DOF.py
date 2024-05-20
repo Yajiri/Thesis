@@ -19,10 +19,15 @@ def draw_grid(frame, rows, cols):
 # Parameters
 history_weight = 0.9
 min_contour_area = 1000
-motion_threshold_factor = 1.5
-vid_path = "../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--14-06-32/10/video.hevc"
-my_path = '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc'
+motion_threshold_factor = 1.55
+paths = [
+    '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc', # Jen's path
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--14-06-32/10/video.hevc', #doesnt work well
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-23--12-52-06/45/video.hevc', # detects all cut-ins, no false positives 
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--15-48-37/16/video.hevc' # works well well with SOF, but dof just shits the bed cause of shadows
+]
 
+my_path = paths[1]
 # Initialization
 video_capture = cv2.VideoCapture(my_path)
 rows = 20
@@ -52,16 +57,17 @@ while True:
 
     magnitude, angle = cv2.cartToPolar(flow_history[..., 0], flow_history[..., 1])
     motion_threshold = np.mean(magnitude) * motion_threshold_factor
+
     motion_mask = magnitude > motion_threshold
 
     grid_cell_height = frame.shape[0] // rows
     grid_cell_width = frame.shape[1] // cols
 
     for i in range(rows):
-        if i <= 5 or i >= 16:  # Skip rows 1-5 and 16-20
+        if i <= 8 or i >= 15:  # Skip rows 1-5 and 16-20
             continue
         for j in range(cols):
-            if j <= 4 or j >= 16:  # Skip columns 1-4 and 16-20
+            if j <= 5 or j >= 15:  # Skip columns 1-4 and 16-20
                 continue
             y_start = i * grid_cell_height
             x_start = j * grid_cell_width
@@ -71,11 +77,11 @@ while True:
             avg_mag = np.mean(magnitude[y_start:y_end, x_start:x_end])
             avg_angle = np.mean(angle[y_start:y_end, x_start:x_end])
 
-            if avg_mag > motion_threshold:
+            if avg_mag > motion_threshold and avg_mag > 1.2 and avg_angle > 3:
                 cv2.rectangle(frame, (x_start, y_start), (x_end, y_end), (0, 0, 255), 2)
 
-                if j in [9, 10]:  # Check columns 9 and 10
-                    for col in [7, 8, 11, 12]:  # Check for movement from columns 7, 8, 11, or 12
+                if j in [9, 10, 11, 12]:  # Check columns 9 and 10
+                    for col in [7, 8, 13, 14]:  # Check for movement from columns 7, 8, 11, or 12
                         # Check if there is movement from previous columns to columns 9 or 10
                         if np.mean(magnitude[y_start:y_end, col * grid_cell_width:(col + 1) * grid_cell_width]) > motion_threshold:
                             print(f"Cut-in detected from column {col} into column {j} - Mag: {avg_mag:.2f}, Angle: {avg_angle:.2f}")
