@@ -1,0 +1,34 @@
+chunkOne = []
+chunkTwo =[
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-11-11--13-08-44/17/video.hevc',   #0
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-11-11--13-08-44/19/video.hevc',   #1
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-11-03--15-33-09/4/video.hevc',    #2
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-22--11-21-08/34/video.hevc',   #3
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-22--11-21-08/35/video.hevc',   #4
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-19--22-01-05/11/video.hevc',   #5
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--15-48-37/16/video.hevc',   #6
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--14-06-32/10/video.hevc',   #8
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-05--22-20-31/10/video.hevc',   #9
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-05--22-20-31/15/video.hevc',   #10
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-05--22-20-31/16/video.hevc',   #11
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-05--21-20-29/10/video.hevc',   #12
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-05--20-46-40/11/video.hevc',   #13
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-05--20-16-56/12/video.hevc',   #14
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-05--20-16-56/14/video.hevc',   #15
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-24--12-49-08/33/video.hevc',   #16
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-23--12-52-06/45/video.hevc',   #17
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-23--12-52-06/46/video.hevc',   #18
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-21--23-18-39/8/video.hevc',    #19
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-21--09-50-40/33/video.hevc',   #20
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-21--09-50-40/34/video.hevc',   #21
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-21--09-50-40/35/video.hevc',   #22
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-20--19-47-23/4/video.hevc',    #23
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-20--19-47-23/10/video.hevc',   #24
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-20--19-47-23/15/video.hevc',   #25
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-08-24--18-40-57/7/video.hevc',    #26
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-08-24--18-40-57/8/video.hevc',    #27
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-08-24--18-40-57/9/video.hevc',    #28
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-08-18--18-20-55/38/video.hevc',   #29
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-08-18--18-20-55/42/video.hevc',   #30
+    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-08-18--18-20-55/43/video.hevc',   #31
+]

@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from video_paths import chunkOne, chunkTwo
 
 def draw_grid(frame, rows, cols):
     height, width = frame.shape[:2]
@@ -16,25 +17,17 @@ def draw_grid(frame, rows, cols):
         x = i * gridline_width
         cv2.line(frame, (x, 0), (x, height), (150, 150, 150), 1)
 
+
 # Parameters
 history_weight = 0.9
 min_contour_area = 1000
 motion_threshold_factor = 1.55
-paths = [
-    '../comma2k/Chunk_1/b0c9d2329ad1606b|2018-08-17--14-55-39/7/video.hevc', # Jen's path
-    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-09-23--12-52-06/45/video.hevc', # detects all cut-ins, no false positives 
-    '../comma2k/Chunk_2/b0c9d2329ad1606b|2018-10-09--15-48-37/16/video.hevc' # works well well with SOF, but dof just shits the bed cause of shadows
-]
-allPaths =[
-
-
-]
 
 # Parameters for grid and video processing
 rows = 20
 cols = 20
 
-for my_path in allPaths:
+for my_path in chunkTwo: #change this to use different chunk sets
     print(f"Processing video: {my_path}")
     video_capture = cv2.VideoCapture(my_path)
 
@@ -85,8 +78,8 @@ for my_path in allPaths:
                 if avg_mag > motion_threshold and avg_mag > 1.2 and avg_angle > 3:
                     cv2.rectangle(frame, (x_start, y_start), (x_end, y_end), (0, 0, 255), 2)
 
-                    if j in [9, 10, 11, 12]:  # Check columns 9 and 10
-                        for col in [7, 8, 13, 14]:  # Check for movement from columns 7, 8, 11, or 12
+                    if j in [9, 10, 11]:  # Check columns 9 and 10
+                        for col in [7, 8, 12, 13]:  # Check for movement from columns 7, 8, 11, or 12
                             if np.mean(magnitude[y_start:y_end, col * grid_cell_width:(col + 1) * grid_cell_width]) > motion_threshold:
                                 print(f"Cut-in detected from column {col} into column {j} - Mag: {avg_mag:.2f}, Angle: {avg_angle:.2f}")
 
